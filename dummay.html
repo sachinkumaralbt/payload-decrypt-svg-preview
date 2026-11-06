@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Payload Decrypt & SVG Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <style>
+        :root {
+            --accent: #0f766e;
+            --accent-soft: #ccfbf1;
+            --secondary: #4f46e5;
+            --secondary-contrast: #ffffff;
+            --surface: #f6f7f5;
+            --code-bg: #0f1a1a;
+            --code-fg: #d7e6e3;
+        }
+
+        [data-bs-theme="dark"] {
+            --accent: #5eead4;
+            --accent-soft: #123f3a;
+            --secondary: #a5b4fc;
+            --secondary-contrast: #1e1b4b;
+            --surface: #121716;
+            --code-bg: #0a0f0f;
+            --code-fg: #d7e6e3;
+        }
+
+        body {
+            background: var(--surface);
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        .app {
+            max-width: 980px;
+        }
+
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: inline-block;
+        }
+
+        .panel {
+            background: var(--bs-body-bg);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 14px;
+        }
+
+        .nav-tabs-custom {
+            border-bottom: 1px solid var(--bs-border-color);
+            gap: .25rem;
+            padding: .5rem .75rem 0;
+        }
+
+        .nav-tabs-custom .nav-link {
+            border: 0;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            color: var(--bs-secondary-color);
+            font-weight: 500;
+            padding: .6rem .9rem;
+        }
+
+        .nav-tabs-custom .nav-link:hover {
+            color: var(--bs-body-color);
+        }
+
+        .nav-tabs-custom .nav-link.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: transparent;
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        [data-bs-theme="dark"] .btn-accent {
+            color: #06201d;
+        }
+
+        .btn-accent:hover,
+        .btn-accent:focus-visible {
+            filter: brightness(1.1);
+            color: #fff;
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        [data-bs-theme="dark"] .btn-accent:hover {
+            color: #06201d;
+        }
+
+        .btn-outline-secondary {
+            --bs-btn-color: var(--secondary);
+            --bs-btn-border-color: color-mix(in srgb, var(--secondary) 55%, transparent);
+            --bs-btn-hover-color: var(--secondary-contrast);
+            --bs-btn-hover-bg: var(--secondary);
+            --bs-btn-hover-border-color: var(--secondary);
+            --bs-btn-focus-shadow-rgb: 99, 102, 241;
+            --bs-btn-active-color: var(--secondary-contrast);
+            --bs-btn-active-bg: var(--secondary);
+            --bs-btn-active-border-color: var(--secondary);
+            --bs-btn-disabled-color: var(--secondary);
+            --bs-btn-disabled-border-color: var(--secondary);
+            --bs-btn-disabled-bg: transparent;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--accent) 25%, transparent);
+        }
+
+        textarea.mono,
+        .code-box {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: .85rem;
+        }
+
+        .code-box {
+            background: var(--code-bg);
+            color: var(--code-fg);
+            border-radius: 10px;
+            padding: 1rem;
+            min-height: 160px;
+            max-height: 420px;
+            overflow: auto;
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .code-box.empty {
+            color: #6b8a85;
+            font-style: italic;
+        }
+
+        .j-key {
+            color: #7dd3fc;
+        }
+
+        .j-str {
+            color: #86efac;
+        }
+
+        .j-num {
+            color: #fca5a5;
+        }
+
+        .j-bool {
+            color: #fcd34d;
+        }
+
+        .j-null {
+            color: #c4b5fd;
+        }
+
+        .stage {
+            border: 1px dashed var(--bs-border-color);
+            border-radius: 10px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow: auto;
+            background-color: #fff;
+            background-image: linear-gradient(45deg, #eceeed 25%, transparent 25%, transparent 75%, #eceeed 75%),
+                linear-gradient(45deg, #eceeed 25%, transparent 25%, transparent 75%, #eceeed 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 8px 8px;
+        }
+
+        .stage.bg-plain {
+            background-image: none;
+        }
+
+        .stage.bg-dark {
+            background-image: none;
+            background-color: #1b2321;
+        }
+
+        .stage img {
+            max-width: 100%;
+            transform-origin: center;
+            transition: transform .15s ease;
+        }
+
+        .hint {
+            color: var(--bs-secondary-color);
+            font-size: .85rem;
+        }
+
+        .toast-container {
+            z-index: 1080;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container app py-4 py-md-5">
+
+        <!-- Header -->
+        <header class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h1 class="h4 mb-1 d-flex align-items-center gap-2"><span class="brand-dot"></span> Payload & SVG tools
+                </h1>
+                <div class="hint">Decrypt API payloads and preview escaped SVG, all in your browser.</div>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" id="themeBtn" type="button" aria-label="Toggle theme">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </header>
+
+        <div class="panel overflow-hidden">
+            <!-- Tabs -->
+            <ul class="nav nav-tabs-custom" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-decrypt" data-bs-toggle="tab" data-bs-target="#pane-decrypt"
+                        type="button" role="tab" aria-controls="pane-decrypt" aria-selected="true">
+                        <i class="fa-solid fa-unlock me-1"></i> Decrypt payload
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-svg" data-bs-toggle="tab" data-bs-target="#pane-svg" type="button"
+                        role="tab" aria-controls="pane-svg" aria-selected="false">
+                        <i class="fa-solid fa-pen-nib me-1"></i> SVG preview
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-3 p-md-4">
+
+                <!-- ============ DECRYPT TAB ============ -->
+                <div class="tab-pane fade show active" id="pane-decrypt" role="tabpanel" aria-labelledby="tab-decrypt"
+                    tabindex="0">
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <label class="form-label mb-0 fw-medium" for="payload">Encrypted payload</label>
+                        <span class="hint" id="payloadCount">0 characters</span>
+                    </div>
+                    <textarea class="form-control mono" rows="6" id="payload"
+                        placeholder="Paste the Base64 encrypted payload here"></textarea>
+
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button class="btn btn-accent" id="decryptBtn" type="button"><i
+                                class="fa-solid fa-unlock me-1"></i> Decrypt</button>
+                        <button class="btn btn-outline-secondary" id="pasteBtn" type="button"><i
+                                class="fa-solid fa-paste me-1"></i> Paste</button>
+                        <button class="btn btn-outline-secondary" id="clearDecrypt" type="button"><i
+                                class="fa-solid fa-circle-xmark me-1"></i> Clear</button>
+                        <span class="hint align-self-center ms-md-auto">Tip: Ctrl/⌘ + Enter to decrypt</span>
+                    </div>
+
+                    <div id="decryptAlert" class="mt-3"></div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                        <h2 class="h6 mb-0">Decrypted JSON</h2>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" id="copyJson" type="button" disabled><i
+                                    class="fa-solid fa-copy me-1"></i> Copy</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="downloadJson" type="button" disabled><i
+                                    class="fa-solid fa-download me-1"></i> Download</button>
+                        </div>
+                    </div>
+                    <pre id="output" class="code-box empty">Decrypted output will appear here.</pre>
+                </div>
+
+                <!-- ============ SVG TAB ============ -->
+                <div class="tab-pane fade" id="pane-svg" role="tabpanel" aria-labelledby="tab-svg" tabindex="0">
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <label class="form-label mb-0 fw-medium" for="svgInput">Escaped SVG from API</label>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="liveToggle" checked>
+                            <label class="form-check-label hint" for="liveToggle">Live preview</label>
+                        </div>
+                    </div>
+                    <textarea id="svgInput" class="form-control mono" rows="7"
+                        placeholder='Paste SVG like: <svg xmlns=\"http://www.w3.org/2000/svg\" ...>'></textarea>
+
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button class="btn btn-accent" id="showSvg" type="button"><i class="fa-solid fa-eye me-1"></i>
+                            Show SVG</button>
+                        <button class="btn btn-outline-secondary" id="pasteSvg" type="button"><i
+                                class="fa-solid fa-paste me-1"></i> Paste</button>
+                        <button class="btn btn-outline-secondary" id="clearSvg" type="button"><i
+                                class="fa-solid fa-circle-xmark me-1"></i> Clear</button>
+                    </div>
+
+                    <div id="svgAlert" class="mt-3"></div>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+                        <h2 class="h6 mb-0">Preview</h2>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Background">
+                                <input type="radio" class="btn-check" name="bg" id="bgCheck" value="" checked>
+                                <label class="btn btn-outline-secondary" for="bgCheck" title="Transparency grid"><i
+                                        class="fa-solid fa-table-cells"></i></label>
+                                <input type="radio" class="btn-check" name="bg" id="bgPlain" value="bg-plain">
+                                <label class="btn btn-outline-secondary" for="bgPlain" title="White"><i
+                                        class="fa-solid fa-sun"></i></label>
+                                <input type="radio" class="btn-check" name="bg" id="bgDark" value="bg-dark">
+                                <label class="btn btn-outline-secondary" for="bgDark" title="Dark"><i
+                                        class="fa-solid fa-moon"></i></label>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                                <button class="btn btn-outline-secondary" id="zoomOut" type="button"
+                                    aria-label="Zoom out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                                <button class="btn btn-outline-secondary" id="zoomReset" type="button">100%</button>
+                                <button class="btn btn-outline-secondary" id="zoomIn" type="button"
+                                    aria-label="Zoom in"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" id="copySvg" type="button" disabled><i
+                                    class="fa-solid fa-copy me-1"></i> Copy SVG</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="downloadSvg" type="button" disabled><i
+                                    class="fa-solid fa-download me-1"></i> Download</button>
+                        </div>
+                    </div>
+                    <div class="stage" id="stage"><span class="hint" id="stageEmpty">No SVG to preview yet.</span></div>
+                    <div class="hint mt-2" id="svgMeta"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast align-items-center text-bg-dark border-0" role="status" aria-live="polite">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMsg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const key = "Abc@1234";
+
+        /* ---------- helpers ---------- */
+        function toast(msg) {
+            $("toastMsg").textContent = msg;
+            bootstrap.Toast.getOrCreateInstance($("toast"), { delay: 1800 }).show();
+        }
+        function showAlert(el, type, msg) {
+            el.innerHTML = msg
+                ? `<div class="alert alert-${type} d-flex align-items-start gap-2 py-2 mb-0" role="alert">
+                       <i class="${type === "danger" ? "fa-solid fa-triangle-exclamation" : type === "success" ? "fa-solid fa-circle-check" : "fa-solid fa-circle-info"}"></i>
+                       <div></div></div>`
+                : "";
+            if (msg) el.querySelector("div > div").textContent = msg;
+        }
+        async function copyText(text, label) {
+            try { await navigator.clipboard.writeText(text); toast(label + " copied"); }
+            catch { toast("Copy failed. Check clipboard permission."); }
+        }
+        async function pasteInto(textarea) {
+            try { textarea.value = await navigator.clipboard.readText(); textarea.dispatchEvent(new Event("input")); }
+            catch { toast("Paste blocked. Press Ctrl/⌘ + V instead."); }
+        }
+        function download(name, text, type) {
+            const url = URL.createObjectURL(new Blob([text], { type }));
+            const a = Object.assign(document.createElement("a"), { href: url, download: name });
+            a.click(); URL.revokeObjectURL(url);
+        }
+
+        /* ---------- theme ---------- */
+        function setTheme(t) {
+            document.documentElement.setAttribute("data-bs-theme", t);
+            $("themeBtn").innerHTML = t === "dark" ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+            try { localStorage.setItem("theme", t); } catch { }
+        }
+        let saved = null; try { saved = localStorage.getItem("theme"); } catch { }
+        setTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+        $("themeBtn").onclick = () => setTheme(document.documentElement.getAttribute("data-bs-theme") === "dark" ? "light" : "dark");
+
+        /* ---------- remember active tab ---------- */
+        document.querySelectorAll('#mainTabs [data-bs-toggle="tab"]').forEach((btn) =>
+            btn.addEventListener("shown.bs.tab", (e) => { try { localStorage.setItem("tab", e.target.id); } catch { } }));
+        try {
+            const t = localStorage.getItem("tab");
+            if (t && $(t)) bootstrap.Tab.getOrCreateInstance($(t)).show();
+        } catch { }
+
+        /* ================= DECRYPT ================= */
+        let decryptedText = "";
+
+        function decryptData(encryptedBase64) {
+            const cleaned = encryptedBase64.replace(/^["']|["']$/g, "").replace(/\s+/g, "");
+            const rawData = CryptoJS.enc.Base64.parse(cleaned);
+            if (rawData.sigBytes <= 16) throw new Error("Payload is too short to contain an IV and data.");
+
+            const iv = CryptoJS.lib.WordArray.create(rawData.words.slice(0, 4), 16);
+            const ciphertext = CryptoJS.lib.WordArray.create(rawData.words.slice(4), rawData.sigBytes - 16);
+            const hashedKey = CryptoJS.SHA256(key);
+            const aes192Key = CryptoJS.lib.WordArray.create(hashedKey.words.slice(0, 6), 24);
+
+            const decrypted = CryptoJS.AES.decrypt({ ciphertext }, aes192Key, {
+                iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7,
+            });
+            return decrypted.toString(CryptoJS.enc.Utf8);
+        }
+
+        function highlightJson(json) {
+            const esc = json.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return esc.replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (m) => {
+                let c = "j-num";
+                if (/^"/.test(m)) c = /:$/.test(m) ? "j-key" : "j-str";
+                else if (/true|false/.test(m)) c = "j-bool";
+                else if (/null/.test(m)) c = "j-null";
+                return `<span class="${c}">${m}</span>`;
+            });
+        }
+
+        function setOutput(text, ok) {
+            const out = $("output");
+            decryptedText = ok ? text : "";
+            out.classList.toggle("empty", !ok);
+            if (ok) out.innerHTML = highlightJson(text); else out.textContent = text;
+            $("copyJson").disabled = $("downloadJson").disabled = !ok;
+        }
+
+        function decrypt() {
+            const value = $("payload").value.trim();
+            const alertEl = $("decryptAlert");
+            if (!value) { showAlert(alertEl, "warning", "Paste an encrypted payload first."); return; }
+            try {
+                const plain = decryptData(value);
+                if (!plain) throw new Error("Decryption produced no readable text. The key or payload may be wrong.");
+                let parsed;
+                try { parsed = JSON.parse(plain); }
+                catch { throw new Error("Decrypted successfully, but the result is not valid JSON."); }
+                setOutput(JSON.stringify(parsed, null, 2), true);
+                showAlert(alertEl, "success", "Decrypted successfully.");
+            } catch (err) {
+                setOutput("Nothing to show.", false);
+                showAlert(alertEl, "danger", err.message || "Invalid payload.");
+            }
+        }
+
+        $("decryptBtn").onclick = decrypt;
+        $("payload").addEventListener("input", () => { $("payloadCount").textContent = $("payload").value.length.toLocaleString() + " characters"; });
+        $("payload").addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") decrypt(); });
+        $("pasteBtn").onclick = () => pasteInto($("payload"));
+        $("clearDecrypt").onclick = () => {
+            $("payload").value = ""; $("payload").dispatchEvent(new Event("input"));
+            setOutput("Decrypted output will appear here.", false); showAlert($("decryptAlert"), "", ""); $("payload").focus();
+        };
+        $("copyJson").onclick = () => copyText(decryptedText, "JSON");
+        $("downloadJson").onclick = () => download("decrypted.json", decryptedText, "application/json");
+
+        /* ================= SVG ================= */
+        let currentSvg = "", zoom = 1;
+
+        function unescapeSvg(s) {
+            s = s.trim();
+            // If the whole thing is a JSON string literal, let JSON handle every escape.
+            if (/^".*"$/s.test(s)) { try { return JSON.parse(s); } catch { } }
+            try { return JSON.parse('"' + s.replace(/(?<!\\)"/g, '\\"') + '"'); } catch { }
+            return s.replace(/\\"/g, '"').replace(/\\n/g, "").replace(/\\t/g, "").replace(/\\\\/g, "\\");
+        }
+
+        function applyZoom() {
+            const img = $("stage").querySelector("img");
+            if (img) img.style.transform = `scale(${zoom})`;
+            $("zoomReset").textContent = Math.round(zoom * 100) + "%";
+        }
+
+        let blobUrl = null;
+        function renderSvg() {
+            const input = $("svgInput").value.trim();
+            const stage = $("stage"), alertEl = $("svgAlert");
+            currentSvg = "";
+            $("copySvg").disabled = $("downloadSvg").disabled = true;
+            $("svgMeta").textContent = "";
+
+            if (!input) {
+                stage.innerHTML = '<span class="hint">No SVG to preview yet.</span>';
+                showAlert(alertEl, "", ""); return;
+            }
+            const decoded = unescapeSvg(input);
+            const doc = new DOMParser().parseFromString(decoded, "image/svg+xml");
+            if (doc.querySelector("parsererror") || doc.documentElement.nodeName.toLowerCase() !== "svg") {
+                stage.innerHTML = '<span class="hint">Preview unavailable.</span>';
+                showAlert(alertEl, "danger", "This is not valid SVG. Check that the pasted text starts with <svg and is not cut off.");
+                return;
+            }
+            // Render as an image so any scripts inside the SVG cannot run.
+            if (blobUrl) URL.revokeObjectURL(blobUrl);
+            blobUrl = URL.createObjectURL(new Blob([decoded], { type: "image/svg+xml" }));
+            const img = new Image();
+            img.alt = "SVG preview";
+            img.onload = () => { applyZoom(); };
+            img.src = blobUrl;
+            stage.replaceChildren(img);
+
+            currentSvg = decoded;
+            $("copySvg").disabled = $("downloadSvg").disabled = false;
+            showAlert(alertEl, "", "");
+            const r = doc.documentElement;
+            const vb = r.getAttribute("viewBox");
+            $("svgMeta").textContent = `${(decoded.length / 1024).toFixed(1)} KB` +
+                (vb ? ` · viewBox ${vb}` : "") +
+                (r.getAttribute("width") ? ` · ${r.getAttribute("width")} × ${r.getAttribute("height") || "auto"}` : "");
+        }
+
+        $("showSvg").onclick = renderSvg;
+        $("pasteSvg").onclick = () => pasteInto($("svgInput"));
+        $("clearSvg").onclick = () => { $("svgInput").value = ""; renderSvg(); $("svgInput").focus(); };
+        let t; $("svgInput").addEventListener("input", () => {
+            if (!$("liveToggle").checked) return;
+            clearTimeout(t); t = setTimeout(renderSvg, 250);
+        });
+        $("copySvg").onclick = () => copyText(currentSvg, "SVG");
+        $("downloadSvg").onclick = () => download("image.svg", currentSvg, "image/svg+xml");
+        document.querySelectorAll('input[name="bg"]').forEach((r) => r.addEventListener("change", () => {
+            $("stage").classList.remove("bg-plain", "bg-dark");
+            if (r.value) $("stage").classList.add(r.value);
+        }));
+        $("zoomIn").onclick = () => { zoom = Math.min(4, zoom + 0.25); applyZoom(); };
+        $("zoomOut").onclick = () => { zoom = Math.max(0.25, zoom - 0.25); applyZoom(); };
+        $("zoomReset").onclick = () => { zoom = 1; applyZoom(); };
+    </script>
+</body>
+
+</html>
